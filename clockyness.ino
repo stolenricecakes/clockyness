@@ -1,0 +1,99 @@
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
+#include <NTPClient.h>
+#include <FastLED.h>
+
+// WiFi credentials
+const char* ssid     = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+// NTP client setup
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 0, 60000);  // UTC, update every 60 seconds
+
+// LED setup
+#define LED_PIN     D4
+#define NUM_LEDS    30
+#define LED_TYPE    WS2812B
+#define COLOR_ORDER GRB
+CRGB leds[NUM_LEDS];
+
+// Timezone offset (in seconds)
+const long CST_OFFSET = -6 * 3600;
+const long CDT_OFFSET = -5 * 3600;
+
+// Check if DST is in effect (basic U.S. rule)
+bool isDST(int dayOfWeek, int month, int day, int hour) {
+  // Only March to November needs checking
+  if (month < 3 || month > 11) return false;
+  if (month > 3 && month < 11) return true;
+
+  if (month == 3) {
+    // DST starts on the second Sunday in March
+    int secondSunday = (14 - (1 + 6 - (day - 1) % 7) % 7);
+    return (day > secondSunday || (day == secondSunday && hour >= 2));
+  }
+  if (month == 11) {
+    // DST ends on the first Sunday in November
+    int firstSunday = 7 - (1 + 6 - (day - 1) % 7) % 7;
+    return (day < firstSunday || (day == firstSunday && hour < 2));
+  }
+  return false;
+}
+
+// Convert UNIX time to local time with DST
+time_t getLocalTime() {
+  time_t raw = timeClient.getEpochTime();
+  struct tm *ptm = gmtime(&raw);
+
+  bool dst = isDST(ptm->tm_wday, ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour);
+  return raw + (dst ? CDT_OFFSET : CST_OFFSET);
+}
+
+void setup() {
+  Serial.begin(115200);
+
+  // Connect to WiFi
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected");
+
+  // Time setup
+  timeClient.begin();
+
+  // LED setup
+  FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
+  FastLED.clear();
+  FastLED.show();
+}
+
+void loop() {
+  timeClient.update();
+
+  // Get local time adjusted for DST
+  time_t localTime = getLocalTime();
+  struct tm *ptm = localtime(&localTime);
+
+  // Debug print
+  char timeStr[32];
+  strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", ptm);
+  Serial.println(timeStr);
+
+  // Example LED pattern: light up based on seconds
+  int second = ptm->tm_sec;
+  for (int i = 0; i < NUM_LEDS; i++) {
+    if (i < second % NUM_LEDS) {
+      leds[i] = CHSV((second * 4) % 255, 255, 100);
+    } else {
+      leds[i] = CRGB::Black;
+    }
+  }
+  FastLED.show();
+
+  delay(1000);  // update every second
+}
+
