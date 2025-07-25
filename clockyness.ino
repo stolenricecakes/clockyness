@@ -1,10 +1,7 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
-//#define FASTLED_ESP8266_NODEMCU_PIN_ORDER
-// works, but freezes #define FASTLED_ESP8266_RAW_PIN_ORDER
-// works, but freezes #define FASTLED_ESP8266_D1_PIN_ORDER
-#include <FastLED.h>
+#include <Adafruit_NeoPixel.h>
 
 
 #include "/home/awall/ESP8266/accesspoint.h"
@@ -23,9 +20,11 @@ NTPClient timeClient(ntpUDP, "us.pool.ntp.org", 0, 3600000);  // UTC, update eve
 // LED setup
 #define LED_PIN     D5
 #define NUM_LEDS    17
-#define LED_TYPE    WS2812B
-#define COLOR_ORDER GRB
-CRGB leds[NUM_LEDS];
+//#define LED_TYPE    WS2812B
+//#define COLOR_ORDER GRB
+//CRGB leds[NUM_LEDS];
+
+Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Timezone offset (in seconds)
 const long CST_OFFSET = -6 * 3600;
@@ -82,9 +81,8 @@ void setup() {
   timeClient.begin();
 
   // LED setup
-  FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS).setCorrection(TypicalLEDStrip);
-  FastLED.clear();
-  FastLED.show();
+  strip.begin();
+  strip.show();
 }
 
 int toTheTwoth(int val) {
@@ -144,16 +142,15 @@ void loop() {
     Serial.print(" *** ");*/
 
     if ((second & twoth) == twoth) {
-     // leds[i + SECOND_OFFSET] = CHSV(random8(), 255, 100);
-      leds[i + SECOND_OFFSET] = CRGB::Green;
-      Serial.print(1);
+     strip.setPixelColor(i + SECOND_OFFSET, strip.Color(0, 255, 0));
+     Serial.print(1);
     }
     else {
-      leds[i + SECOND_OFFSET] = CRGB::Black;
+     strip.setPixelColor(i + SECOND_OFFSET, strip.Color(0, 0, 0));
       Serial.print(0);
     }
   }
-  FastLED.show();
+  strip.show();
   Serial.println();
 
   delay(1000);  // update every second
