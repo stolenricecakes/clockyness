@@ -3,17 +3,22 @@
 #include <NTPClient.h>
 #include <FastLED.h>
 
-// WiFi credentials
-const char* ssid     = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+
+#include "/home/awall/ESP8266/accesspoint.h"
+// start of accessinfo.h contents ----------------------------
+#ifndef AP_INFO_H
+  #define AP_INFO_H
+  #define AP_SSID	"your_wifi_router_SSID_here"
+  #define AP_PASSWORD "your_accesspoint_password"
+#endif // AP_INFO_H
 
 // NTP client setup
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", 0, 60000);  // UTC, update every 60 seconds
 
 // LED setup
-#define LED_PIN     D4
-#define NUM_LEDS    30
+#define LED_PIN     D5
+#define NUM_LEDS    17
 #define LED_TYPE    WS2812B
 #define COLOR_ORDER GRB
 CRGB leds[NUM_LEDS];
@@ -54,7 +59,7 @@ void setup() {
   Serial.begin(115200);
 
   // Connect to WiFi
-  WiFi.begin(ssid, password);
+  WiFi.begin(AP_SSID, AP_PASSWORD);
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -91,6 +96,7 @@ void loop() {
     } else {
       leds[i] = CRGB::Black;
     }
+    //leds[i] = CHSV((second * 4) % 255, 255, 100);
   }
   FastLED.show();
 
