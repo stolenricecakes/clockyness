@@ -2,6 +2,7 @@
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <Adafruit_NeoPixel.h>
+#include <ArduinoOTA.h>
 
 
 #include "/home/awall/ESP8266/accesspoint.h"
@@ -20,9 +21,6 @@ NTPClient timeClient(ntpUDP, "us.pool.ntp.org", 0, 3600000);  // UTC, update eve
 // LED setup
 #define LED_PIN     D5
 #define NUM_LEDS    17
-//#define LED_TYPE    WS2812B
-//#define COLOR_ORDER GRB
-//CRGB leds[NUM_LEDS];
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
@@ -77,12 +75,41 @@ void setup() {
   }
   Serial.println("\nWiFi connected");
 
+  ArduinoOTA.setHostname("clockyness");
+
+  ArduinoOTA.onStart([]() {
+    Serial.println("Start OTA update");
+  });
+
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nOTA update complete!");
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+
   // Time setup
   timeClient.begin();
 
   // LED setup
   strip.begin();
+  strip.setBrightness(128);
   strip.show();
+
+  ArduinoOTA.begin();
+  Serial.println("OTA all ready to go, mofo.");
+
+  randomSeed(analogRead(0));
 }
 
 int toTheTwoth(int val) {
@@ -95,6 +122,7 @@ int toTheTwoth(int val) {
 
 void loop() {
   timeClient.update();
+  ArduinoOTA.handle();
 
   // Get local time adjusted for DST
   time_t localTime = getLocalTime();
@@ -105,51 +133,44 @@ void loop() {
   strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", ptm);
   Serial.println(timeStr);
 
-  // Example LED pattern: light up based on seconds
-  /*
   int hour = ptm->tm_hour;
   for (int i = 0; i < 5; i++) {
     int twoth = toTheTwoth(i);
-    if (hour & twoth == twoth) {
-      leds[i + HOUR_OFFSET] = CHSV(random8(), 255, 100);
+    if ((hour & twoth) == twoth) {
+      strip.setPixelColor(i + HOUR_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
     }
     else {
-      leds[i + HOUR_OFFSET] = CRGB::Black;
+     strip.setPixelColor(i + HOUR_OFFSET, strip.Color(0, 0, 0));
     }
   }
 
   int minute = ptm->tm_min;
+  Serial.printf("minute is: %d\n", minute);
   for (int i = 0; i < 6; i++) {
     int twoth = toTheTwoth(i);
-    if (minute & twoth == twoth) {
-      leds[5 - i + MINUTE_OFFSET] = CHSV(random8(), 255, 100);
+    if ((minute & twoth) == twoth) {
+      strip.setPixelColor(5 - i + MINUTE_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
+      Serial.print(1);
     }
     else {
-      leds[5 - i + MINUTE_OFFSET] = CRGB::Black;
+     strip.setPixelColor(5 - i + MINUTE_OFFSET, strip.Color(0, 0, 0));
+      Serial.print(0);
     }
   }
-  */
-
+  Serial.println();
 
   int second = ptm->tm_sec;
   for (int i = 5; i >= 0; i--) {
     int twoth = toTheTwoth(i);
-/*    Serial.print(second);
-    Serial.print(" & ");
-    Serial.print(twoth);
-    Serial.print(" === ");
-    Serial.print(second & twoth);
-    Serial.print(" *** ");*/
 
     if ((second & twoth) == twoth) {
-     strip.setPixelColor(i + SECOND_OFFSET, strip.Color(0, 255, 0));
-     Serial.print(1);
+     strip.setPixelColor(i + SECOND_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
     }
     else {
      strip.setPixelColor(i + SECOND_OFFSET, strip.Color(0, 0, 0));
-      Serial.print(0);
     }
   }
+  
   strip.show();
   Serial.println();
 
