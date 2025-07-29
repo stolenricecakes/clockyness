@@ -28,12 +28,9 @@ Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 const long CST_OFFSET = -6 * 3600;
 const long CDT_OFFSET = -5 * 3600;
 
-#define HOUR_OFFSET 0
-#define MINUTE_OFFSET 5
-#define SECOND_OFFSET 11
-#define HOUR_DIRECTION 1
-#define MINUTE_DIRECTION -1
-#define SECOND_DIRECTION 1
+#define HOUR_OFFSET 12
+#define MINUTE_OFFSET 6
+#define SECOND_OFFSET 0
 
 // Check if DST is in effect (basic U.S. rule)
 bool isDST(int dayOfWeek, int month, int day, int hour) {
@@ -138,6 +135,7 @@ void loop() {
     int twoth = toTheTwoth(i);
     if ((hour & twoth) == twoth) {
       strip.setPixelColor(i + HOUR_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
+      //strip.setPixelColor(i + HOUR_OFFSET, strip.Color(255, 0, 0));
     }
     else {
      strip.setPixelColor(i + HOUR_OFFSET, strip.Color(0, 0, 0));
@@ -150,6 +148,7 @@ void loop() {
     int twoth = toTheTwoth(i);
     if ((minute & twoth) == twoth) {
       strip.setPixelColor(5 - i + MINUTE_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
+      //strip.setPixelColor(5 - i + MINUTE_OFFSET, strip.Color(0, 255, 0));
       Serial.print(1);
     }
     else {
@@ -165,6 +164,7 @@ void loop() {
 
     if ((second & twoth) == twoth) {
      strip.setPixelColor(i + SECOND_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
+     //strip.setPixelColor(i + SECOND_OFFSET, strip.Color(0, 0, 255));
     }
     else {
      strip.setPixelColor(i + SECOND_OFFSET, strip.Color(0, 0, 0));
