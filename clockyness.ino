@@ -32,6 +32,11 @@ const long CDT_OFFSET = -5 * 3600;
 #define MINUTE_OFFSET 6
 #define SECOND_OFFSET 0
 
+int lastHour = 0;
+int lastMinute = 0;
+uint32_t baseHourColor = 0;
+uint32_t baseMinuteColor = 0;
+
 // Check if DST is in effect (basic U.S. rule)
 bool isDST(int dayOfWeek, int month, int day, int hour) {
   // Only March to November needs checking
@@ -63,13 +68,23 @@ time_t getLocalTime() {
 void setup() {
   Serial.begin(115200);
 
+  // LED setup
+  strip.begin();
+  strip.setBrightness(128);
+  strip.show();
+
   // Connect to WiFi
   WiFi.begin(AP_SSID, AP_PASSWORD);
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
+    }
+    strip.show();
     Serial.print(".");
-  }
+    delay(50);
+  } 
+
   Serial.println("\nWiFi connected");
 
   ArduinoOTA.setHostname("clockyness");
@@ -98,11 +113,6 @@ void setup() {
   // Time setup
   timeClient.begin();
 
-  // LED setup
-  strip.begin();
-  strip.setBrightness(128);
-  strip.show();
-
   ArduinoOTA.begin();
   Serial.println("OTA all ready to go, mofo.");
 
@@ -118,12 +128,25 @@ int toTheTwoth(int val) {
 }
 
 void loop() {
+  long loopStart = millis();
   timeClient.update();
   ArduinoOTA.handle();
 
   // Get local time adjusted for DST
   time_t localTime = getLocalTime();
   struct tm *ptm = localtime(&localTime);
+  Serial.print("Holy dinkles, the year is: ");
+  Serial.println(ptm->tm_year);
+
+  // years are super weird... they're an offset of the year 1900.   
+ if (ptm->tm_year < 100) {
+    for (int i = 0; i < NUM_LEDS; i++) {
+      strip.setPixelColor(i, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
+    }
+    strip.show();
+    delay(50);
+    return;
+  } 
 
   // Debug print
   char timeStr[32];
@@ -131,11 +154,14 @@ void loop() {
   Serial.println(timeStr);
 
   int hour = ptm->tm_hour;
+  if (hour != lastHour) {
+     baseHourColor = strip.gamma32(strip.ColorHSV(random(65535), 255, 128));
+  }
   for (int i = 0; i < 5; i++) {
     int twoth = toTheTwoth(i);
     if ((hour & twoth) == twoth) {
-      strip.setPixelColor(i + HOUR_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
-      //strip.setPixelColor(i + HOUR_OFFSET, strip.Color(255, 0, 0));
+      //strip.setPixelColor(i + HOUR_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
+      strip.setPixelColor(i + HOUR_OFFSET, baseHourColor);
     }
     else {
      strip.setPixelColor(i + HOUR_OFFSET, strip.Color(0, 0, 0));
@@ -143,12 +169,14 @@ void loop() {
   }
 
   int minute = ptm->tm_min;
-  Serial.printf("minute is: %d\n", minute);
+  if (minute != lastMinute) {
+     baseMinuteColor = strip.gamma32(strip.ColorHSV(random(65535), 255, 128));
+  }
   for (int i = 0; i < 6; i++) {
     int twoth = toTheTwoth(i);
     if ((minute & twoth) == twoth) {
-      strip.setPixelColor(5 - i + MINUTE_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
-      //strip.setPixelColor(5 - i + MINUTE_OFFSET, strip.Color(0, 255, 0));
+      strip.setPixelColor(5 - i + MINUTE_OFFSET, baseMinuteColor);
+      //strip.setPixelColor(5 - i + MINUTE_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
       Serial.print(1);
     }
     else {
@@ -159,21 +187,30 @@ void loop() {
   Serial.println();
 
   int second = ptm->tm_sec;
+  uint32_t secondColor = strip.gamma32(strip.ColorHSV(random(65535), 255, 128));
+
   for (int i = 5; i >= 0; i--) {
     int twoth = toTheTwoth(i);
 
     if ((second & twoth) == twoth) {
-     strip.setPixelColor(i + SECOND_OFFSET, strip.gamma32(strip.ColorHSV(random(65535), 255, 128)));
+     strip.setPixelColor(i + SECOND_OFFSET, secondColor);
      //strip.setPixelColor(i + SECOND_OFFSET, strip.Color(0, 0, 255));
     }
     else {
      strip.setPixelColor(i + SECOND_OFFSET, strip.Color(0, 0, 0));
     }
   }
+
   
   strip.show();
   Serial.println();
 
-  delay(1000);  // update every second
+  lastHour = hour;
+  lastMinute = minute;
+
+  Serial.print("sleeping for: ");
+  Serial.println(1000 - (millis() - loopStart));
+
+  delay(1000 - (millis() - loopStart));  // update every secondish
 }
 
