@@ -209,8 +209,10 @@ void loop() {
   lastMinute = minute;
 
   Serial.print("sleeping for: ");
-  Serial.println(1000 - (millis() - loopStart));
+  Serial.print(1000 - (millis() - loopStart));
+  Serial.print(" but constrained to: ");
+  Serial.println(constrain(1000 - (millis() - loopStart), 10, 1000));
 
-  delay(1000 - (millis() - loopStart));  // update every secondish
+  delay(constrain(1000 - (millis() - loopStart), 10, 1000));  // update every secondish
 }
 
