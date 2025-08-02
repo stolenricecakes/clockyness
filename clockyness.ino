@@ -4,6 +4,14 @@
 #include <NTPClient.h>
 #include <Adafruit_NeoPixel.h>
 #include <ArduinoOTA.h>
+#include <EEPROM.h>
+
+WiFiManager wifiManager;
+
+WiFiManagerParameter modeSetting("mode", "Mode (purdue or... ?)", "", 10);
+
+bool shouldSaveConfig = false;
+bool purdueMode = false;
 
 // NTP client setup
 WiFiUDP ntpUDP;
@@ -19,6 +27,8 @@ Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 // Timezone offset (in seconds)
 const long CST_OFFSET = -6 * 3600;
 const long CDT_OFFSET = -5 * 3600;
+const long EST_OFFSET = -5 * 3600;
+const long EDT_OFFSET = -4 * 3600;
 
 #define HOUR_OFFSET 12
 #define MINUTE_OFFSET 6
@@ -54,7 +64,12 @@ time_t getLocalTime() {
   struct tm *ptm = gmtime(&raw);
 
   bool dst = isDST(ptm->tm_wday, ptm->tm_mon + 1, ptm->tm_mday, ptm->tm_hour);
-  return raw + (dst ? CDT_OFFSET : CST_OFFSET);
+  if (purdueMode) {
+     return raw + (dst ? EDT_OFFSET : EST_OFFSET);
+  }
+  else {
+     return raw + (dst ? CDT_OFFSET : CST_OFFSET);
+  }
 }
 
 void inConfigMode(WiFiManager *myWifiManager) {
@@ -73,18 +88,46 @@ void inConfigMode(WiFiManager *myWifiManager) {
   strip.show();
 }
 
+void saveModeSettingToEEPROM(String modeValue) {
+  for (int i = 0; i < modeValue.length(); ++i) {
+    EEPROM.write(i, modeValue[i]);
+  }
+  EEPROM.write(modeValue.length(), '\0'); // null terminator
+  EEPROM.commit();
+}
+
+String loadModeSettingFromEEPROM() {
+  char data[11]; // match size from parameter
+  for (int i = 0; i < 10; ++i) {
+    data[i] = EEPROM.read(i);
+    if (data[i] == '\0') break;
+  }
+  data[10] = '\0';
+  return String(data);
+}
+
 void setup() {
   Serial.begin(115200);
+  EEPROM.begin(512);
 
   // LED setup
   strip.begin();
   strip.setBrightness(128);
   strip.show();
 
-  WiFiManager wifiManager;
+  //temporary...
+  //wifiManager.resetSettings();
+
+  wifiManager.addParameter(&modeSetting);
   wifiManager.setClass("invert");
   wifiManager.setConfigPortalTimeout(300);
   wifiManager.setAPCallback(inConfigMode);
+  wifiManager.setSaveConfigCallback([]() {
+    Serial.println("WiFiManager config was changed — marking to save custom params");
+    shouldSaveConfig = true;
+  });
+
+
   wifiManager.autoConnect("clockyness");
 
   // Connect to WiFi
@@ -97,6 +140,16 @@ void setup() {
     Serial.print(".");
     delay(50);
   } 
+
+  if (shouldSaveConfig) {
+     String modeValue = modeSetting.getValue();
+     saveModeSettingToEEPROM(modeValue);
+     purdueMode = modeValue.indexOf("purdue") >= 0;
+  }
+  else {
+     String modeValue = loadModeSettingFromEEPROM();
+     purdueMode = modeValue.indexOf("purdue") >= 0;
+  }
 
   Serial.println("\nWiFi connected");
 
@@ -140,6 +193,31 @@ int toTheTwoth(int val) {
   return result;
 }
 
+uint32_t gimmeAColor() {
+ //deep aqua blue return strip.gamma32(strip.ColorHSV(hue, 128, 250));
+ // seems a bit brighter?  return strip.gamma32(strip.ColorHSV(hue, 255, 250));
+ // less bright... much more green. return strip.gamma32(strip.ColorHSV(hue, 255, 128));
+ // return strip.gamma32(strip.ColorHSV(hue, 255, 128)); // start here...
+// washed out white trash  return strip.gamma32(strip.ColorHSV(9984, 77, 207)); // start here...
+// looks yellow - but too bright  return strip.gamma32(strip.ColorHSV(9984, 177, 207));
+// awful - looks white return strip.gamma32(strip.ColorHSV(9984, 127, 207));
+ // very muted, but interesting. a slight bump of the hue and bright? return strip.gamma32(strip.ColorHSV(9984, 177, 64));
+  // good setting... just find the right hue. return strip.gamma32(strip.ColorHSV(9984, 177, 90));
+//  return strip.gamma32(strip.ColorHSV(hue, 177, 90));
+// best so far:  return strip.gamma32(strip.ColorHSV(8800, 177, 90));
+
+  
+  if (purdueMode) {
+    return strip.gamma32(strip.ColorHSV(8800, 177, 90));
+  }
+  else {
+    return strip.gamma32(strip.ColorHSV(random(65535), 255, 128));
+  }
+}
+
+
+
+
 void loop() {
   long loopStart = millis();
   timeClient.update();
@@ -168,7 +246,7 @@ void loop() {
 
   int hour = ptm->tm_hour;
   if (hour != lastHour) {
-     baseHourColor = strip.gamma32(strip.ColorHSV(random(65535), 255, 128));
+     baseHourColor = gimmeAColor();
   }
   for (int i = 0; i < 5; i++) {
     int twoth = toTheTwoth(i);
@@ -183,7 +261,7 @@ void loop() {
 
   int minute = ptm->tm_min;
   if (minute != lastMinute) {
-     baseMinuteColor = strip.gamma32(strip.ColorHSV(random(65535), 255, 128));
+     baseMinuteColor = gimmeAColor();
   }
   for (int i = 0; i < 6; i++) {
     int twoth = toTheTwoth(i);
@@ -200,7 +278,7 @@ void loop() {
   Serial.println();
 
   int second = ptm->tm_sec;
-  uint32_t secondColor = strip.gamma32(strip.ColorHSV(random(65535), 255, 128));
+  uint32_t secondColor = gimmeAColor();
 
   for (int i = 5; i >= 0; i--) {
     int twoth = toTheTwoth(i);
