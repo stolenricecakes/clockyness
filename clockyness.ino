@@ -5,15 +5,6 @@
 #include <Adafruit_NeoPixel.h>
 #include <ArduinoOTA.h>
 
-
-// #include "/home/awall/ESP8266/accesspoint.h"
-// start of accessinfo.h contents ----------------------------
-// #ifndef AP_INFO_H
-//  #define AP_INFO_H
-//  #define AP_SSID	"your_wifi_router_SSID_here"
-//  #define AP_PASSWORD "your_accesspoint_password"
-//#endif // AP_INFO_H
-
 // NTP client setup
 WiFiUDP ntpUDP;
 //NTPClient timeClient(ntpUDP, "pool.ntp.org", 0, 60000);  // UTC, update every 60 seconds
@@ -24,7 +15,6 @@ NTPClient timeClient(ntpUDP, "us.pool.ntp.org", 0, 3600000);  // UTC, update eve
 #define NUM_LEDS    17
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
-
 
 // Timezone offset (in seconds)
 const long CST_OFFSET = -6 * 3600;
@@ -98,7 +88,6 @@ void setup() {
   wifiManager.autoConnect("clockyness");
 
   // Connect to WiFi
-  //WiFi.begin(AP_SSID, AP_PASSWORD);
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     for (int i = 0; i < NUM_LEDS; i++) {
