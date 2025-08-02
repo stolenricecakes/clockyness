@@ -1,17 +1,18 @@
 #include <ESP8266WiFi.h>
+#include <WiFiManager.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <Adafruit_NeoPixel.h>
 #include <ArduinoOTA.h>
 
 
-#include "/home/awall/ESP8266/accesspoint.h"
+// #include "/home/awall/ESP8266/accesspoint.h"
 // start of accessinfo.h contents ----------------------------
-#ifndef AP_INFO_H
-  #define AP_INFO_H
-  #define AP_SSID	"your_wifi_router_SSID_here"
-  #define AP_PASSWORD "your_accesspoint_password"
-#endif // AP_INFO_H
+// #ifndef AP_INFO_H
+//  #define AP_INFO_H
+//  #define AP_SSID	"your_wifi_router_SSID_here"
+//  #define AP_PASSWORD "your_accesspoint_password"
+//#endif // AP_INFO_H
 
 // NTP client setup
 WiFiUDP ntpUDP;
@@ -23,6 +24,7 @@ NTPClient timeClient(ntpUDP, "us.pool.ntp.org", 0, 3600000);  // UTC, update eve
 #define NUM_LEDS    17
 
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
+
 
 // Timezone offset (in seconds)
 const long CST_OFFSET = -6 * 3600;
@@ -65,6 +67,22 @@ time_t getLocalTime() {
   return raw + (dst ? CDT_OFFSET : CST_OFFSET);
 }
 
+void inConfigMode(WiFiManager *myWifiManager) {
+  Serial.println("Entered config mode");
+  Serial.println(WiFi.softAPIP());
+
+  Serial.println(myWifiManager->getConfigPortalSSID());
+
+  strip.clear();
+  strip.setPixelColor(HOUR_OFFSET, strip.ColorHSV(0, 255, 128));
+  strip.setPixelColor(HOUR_OFFSET + 4, strip.ColorHSV(0, 255, 128));
+  strip.setPixelColor(MINUTE_OFFSET + 2, strip.ColorHSV(0, 255, 128));
+  strip.setPixelColor(MINUTE_OFFSET + 3, strip.ColorHSV(0, 255, 128));
+  strip.setPixelColor(SECOND_OFFSET, strip.ColorHSV(0, 255, 128));
+  strip.setPixelColor(SECOND_OFFSET + 5, strip.ColorHSV(0, 255, 128));
+  strip.show();
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -73,8 +91,14 @@ void setup() {
   strip.setBrightness(128);
   strip.show();
 
+  WiFiManager wifiManager;
+  wifiManager.setClass("invert");
+  wifiManager.setConfigPortalTimeout(300);
+  wifiManager.setAPCallback(inConfigMode);
+  wifiManager.autoConnect("clockyness");
+
   // Connect to WiFi
-  WiFi.begin(AP_SSID, AP_PASSWORD);
+  //WiFi.begin(AP_SSID, AP_PASSWORD);
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     for (int i = 0; i < NUM_LEDS; i++) {
