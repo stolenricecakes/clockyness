@@ -206,9 +206,11 @@ uint32_t gimmeAColor() {
 //  return strip.gamma32(strip.ColorHSV(hue, 177, 90));
 // best so far:  return strip.gamma32(strip.ColorHSV(8800, 177, 90));
 
+//#5b4819
   
   if (purdueMode) {
-    return strip.gamma32(strip.ColorHSV(8800, 177, 90));
+    // return strip.gamma32(strip.ColorHSV(8800, 177, 90));
+    return strip.gamma32(strip.Color(91, 72, 25));
   }
   else {
     return strip.gamma32(strip.ColorHSV(random(65535), 255, 128));
