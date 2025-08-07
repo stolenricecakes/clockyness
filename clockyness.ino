@@ -22,6 +22,8 @@ NTPClient timeClient(ntpUDP, "us.pool.ntp.org", 0, 3600000);  // UTC, update eve
 #define LED_PIN     D5
 #define NUM_LEDS    17
 
+#define RESET_PIN   D1
+
 Adafruit_NeoPixel strip(NUM_LEDS, LED_PIN, NEO_GRB + NEO_KHZ800);
 
 // Timezone offset (in seconds)
@@ -110,13 +112,26 @@ void setup() {
   Serial.begin(115200);
   EEPROM.begin(512);
 
+  while(!Serial) {
+    ; // just wait...
+  }
+
+  pinMode(RESET_PIN, INPUT_PULLUP);
+
+  Serial.println("Checking reset pin");
+
+  if (digitalRead(RESET_PIN) == LOW) {
+     Serial.println("HOLY HORSEPUCKY!! THE RESET IS LOW");
+     wifiManager.resetSettings();
+  }
+  else {
+    Serial.println("aint no switch on");
+  }
+
   // LED setup
   strip.begin();
   strip.setBrightness(128);
   strip.show();
-
-  //temporary...
-  //wifiManager.resetSettings();
 
   wifiManager.addParameter(&modeSetting);
   wifiManager.setClass("invert");
@@ -127,6 +142,7 @@ void setup() {
     shouldSaveConfig = true;
   });
 
+  Serial.println("startin clockytime");
 
   wifiManager.autoConnect("clockyness");
 
